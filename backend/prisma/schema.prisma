@@ -1,0 +1,93 @@
+// This is your Prisma schema file
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model Document {
+  id        String   @id @default(uuid()) @db.Uuid
+  filename  String   @db.VarChar(255)
+  filePath  String   @map("file_path")
+  fileType  String   @map("file_type") @db.VarChar(50)
+  fileSize  BigInt   @map("file_size")
+
+  uploadTimestamp DateTime @default(now()) @map("upload_timestamp") @db.Timestamptz(6)
+
+  // Processing status for each parser
+  doclingStatus  String? @default("pending") @map("docling_status") @db.VarChar(20)
+  azureDiStatus  String? @default("pending") @map("azure_di_status") @db.VarChar(20)
+  doclingError   String? @map("docling_error")
+  azureDiError   String? @map("azure_di_error")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  chunks DocumentChunk[]
+
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id         String  @id @default(uuid()) @db.Uuid
+  documentId String  @map("document_id") @db.Uuid
+  content    String
+
+  // Vector embedding - using unsupported type for pgvector
+  // We'll handle this with raw queries
+  embedding  Unsupported("vector(1536)")?
+
+  // JSONB metadata containing:
+  // {
+  //   "source_tool": "docling" | "azure_di",
+  //   "file_name": string,
+  //   "page_number": number,
+  //   "chunk_serial": number,
+  //   "section_title": string?,
+  //   "layout_info": object?,
+  //   "confidence_score": number?
+  // }
+  metadata   Json
+
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId], map: "idx_chunks_document_id")
+  @@map("document_chunks")
+}
+
+model ChatSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  parsingApproach String   @map("parsing_approach") @db.VarChar(20)
+  llmModel        String   @map("llm_model") @db.VarChar(50)
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id              String   @id @default(uuid()) @db.Uuid
+  sessionId       String   @map("session_id") @db.Uuid
+  role            String   @db.VarChar(20)
+  content         String
+  retrievedChunks Json?    @map("retrieved_chunks")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId], map: "idx_chat_messages_session_id")
+  @@map("chat_messages")
+}
