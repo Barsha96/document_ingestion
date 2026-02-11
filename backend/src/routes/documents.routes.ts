@@ -4,6 +4,7 @@ import {
   getDocumentById,
   deleteDocument
 } from '../services/upload.service';
+import { serializeBigInt } from '../utils/json.util';
 
 const router = Router();
 
@@ -11,7 +12,7 @@ const router = Router();
 router.get('/', async (req, res, next) => {
   try {
     const documents = await listDocuments();
-    res.json({ documents });
+    res.json({ documents: serializeBigInt(documents) });
   } catch (error) {
     next(error);
   }
@@ -26,7 +27,7 @@ router.get('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    res.json({ document });
+    res.json({ document: serializeBigInt(document) });
   } catch (error) {
     next(error);
   }

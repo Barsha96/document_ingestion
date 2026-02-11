@@ -14,6 +14,18 @@ export async function parseWithAzureDI(documentId: string, filePath: string) {
       throw new Error('Azure Document Intelligence credentials not configured');
     }
 
+    // Check file size before processing (Azure DI Free tier: 4MB limit, Standard: 500MB)
+    const AZURE_DI_MAX_SIZE = 4 * 1024 * 1024; // 4 MB for free tier
+    const fileStats = await fs.stat(filePath);
+
+    if (fileStats.size > AZURE_DI_MAX_SIZE) {
+      const sizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
+      const errorMsg = `File size (${sizeMB} MB) exceeds Azure DI free tier limit (4 MB). Upgrade to Standard tier or use smaller files.`;
+      await updateDocumentStatus(documentId, 'azure_di', 'failed', errorMsg);
+      console.log(`⚠️ ${errorMsg}`);
+      return; // Skip processing without throwing error
+    }
+
     // Update status to processing
     await updateDocumentStatus(documentId, 'azure_di', 'processing');
 
