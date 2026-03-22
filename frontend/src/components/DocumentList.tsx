@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { Document } from '@/types/document'
-import { FileText, Trash2, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { FileText, Trash2, CheckCircle2, Loader2, XCircle, X } from 'lucide-react'
 
 interface Props {
   documents: Document[]
@@ -73,6 +74,8 @@ function StatusBadge({
   status: string
   error?: string
 }) {
+  const [showError, setShowError] = useState(false)
+
   const getStatusDisplay = () => {
     switch (status) {
       case 'completed':
@@ -91,7 +94,7 @@ function StatusBadge({
         return {
           icon: <XCircle className="h-4 w-4" />,
           text: 'Failed',
-          className: 'bg-red-100 text-red-800',
+          className: 'bg-red-100 text-red-800 cursor-pointer hover:bg-red-200',
         }
       default:
         return {
@@ -105,19 +108,38 @@ function StatusBadge({
   const display = getStatusDisplay()
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col relative">
       <span className="text-xs font-medium text-gray-600 mb-1">{label}</span>
       <div
         className={`inline-flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${display.className}`}
-        title={error}
+        onClick={error ? () => setShowError(true) : undefined}
       >
         {display.icon}
         <span>{display.text}</span>
       </div>
-      {error && (
-        <span className="text-xs text-red-600 mt-1" title={error}>
-          Error: {error.substring(0, 50)}...
-        </span>
+
+      {showError && error && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowError(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-red-700">{label} — Error Details</h3>
+              <button
+                onClick={() => setShowError(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <pre className="text-sm text-gray-800 bg-red-50 rounded p-4 whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+              {error}
+            </pre>
+          </div>
+        </div>
       )}
     </div>
   )
